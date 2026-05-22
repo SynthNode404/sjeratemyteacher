@@ -16,6 +16,9 @@ export interface Teacher {
   ratingSupport: number;      // 1-5 sub-rating
   totalReviews: number;
   accentColor: string;        // e.g. "emerald", "blue", "violet", "amber"
+  ratingDistributionClarity?: Record<number, number>;
+  ratingDistributionHelpfulness?: Record<number, number>;
+  ratingDistributionSupport?: Record<number, number>;
 }
 
 export interface Review {

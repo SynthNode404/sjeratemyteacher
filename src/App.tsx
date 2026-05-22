@@ -551,6 +551,9 @@ export default function App() {
                     Authenticate Console
                   </button>
                 </form>
+                <p className="mt-4.5 text-[11px] text-indigo-300 font-semibold">
+                  Hint: Use default password <code className="bg-indigo-900 border border-indigo-800 text-yellow-300 px-1.5 py-0.5 rounded font-mono font-extrabold">admin123</code> to authenticate
+                </p>
               </div>
             ) : (
               <>
@@ -574,7 +577,7 @@ export default function App() {
                     }`}
                   >
                     {studentEditingState ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
-                    {studentEditingState ? "Swith to View-Only Mode" : "Turn On Student Editing"}
+                    {studentEditingState ? "Switch to View-Only Mode" : "Turn On Student Editing"}
                   </button>
                 </div>
 
@@ -1180,7 +1183,7 @@ export default function App() {
         </div>
         <div className="text-indigo-600 text-center md:text-right font-black flex items-center justify-center md:justify-end gap-2.5">
           <span>Rate My Teachers • Built for high fidelity transparency • 2026</span>
-          <span className="bg-indigo-50 text-indigo-700 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-indigo-100 uppercase tracking-normal">v1.2.1</span>
+          <span className="bg-indigo-50 text-indigo-700 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-indigo-100 uppercase tracking-normal">v1.2.2</span>
         </div>
       </footer>
 

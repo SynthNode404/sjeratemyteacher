@@ -11,7 +11,17 @@ import { Teacher, Review } from "./src/types";
 
 const app = express();
 const PORT = 3000;
-const DB_FILE = path.join(process.cwd(), "db.json");
+const DB_FILE = process.env.DATABASE_PATH || path.join(process.cwd(), "db.json");
+
+// Ensure parent directories exist for the database file (especially useful for custom Render persistent disk mounts)
+try {
+  const dbDir = path.dirname(DB_FILE);
+  if (!fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir, { recursive: true });
+  }
+} catch (dirErr) {
+  console.warn("Could not verify or create database directory:", dirErr);
+}
 
 // Define the global config requested by the user
 // "Add a simple setting in the code like: const STUDENT_EDITING_ENABLED = true;"
@@ -96,7 +106,10 @@ function recalculateTeacherRatings(teacherId: string, reviews: Review[], teacher
           ratingClarity: 0,
           ratingHelpfulness: 0,
           ratingSupport: 0,
-          totalReviews: 0
+          totalReviews: 0,
+          ratingDistributionClarity: {1: 0, 2: 0, 3: 0, 4: 0, 5: 0},
+          ratingDistributionHelpfulness: {1: 0, 2: 0, 3: 0, 4: 0, 5: 0},
+          ratingDistributionSupport: {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
         };
       }
 
@@ -105,13 +118,30 @@ function recalculateTeacherRatings(teacherId: string, reviews: Review[], teacher
       const sumHelpful = teacherReviews.reduce((sum, r) => sum + r.ratingHelpfulness, 0);
       const sumSupport = teacherReviews.reduce((sum, r) => sum + r.ratingSupport, 0);
 
+      const ratingDistributionClarity: Record<number, number> = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0};
+      const ratingDistributionHelpfulness: Record<number, number> = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0};
+      const ratingDistributionSupport: Record<number, number> = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0};
+
+      teacherReviews.forEach(r => {
+        const cVal = Math.min(5, Math.max(1, Math.round(r.ratingClarity)));
+        const hVal = Math.min(5, Math.max(1, Math.round(r.ratingHelpfulness)));
+        const sVal = Math.min(5, Math.max(1, Math.round(r.ratingSupport)));
+
+        ratingDistributionClarity[cVal] = (ratingDistributionClarity[cVal] || 0) + 1;
+        ratingDistributionHelpfulness[hVal] = (ratingDistributionHelpfulness[hVal] || 0) + 1;
+        ratingDistributionSupport[sVal] = (ratingDistributionSupport[sVal] || 0) + 1;
+      });
+
       return {
         ...t,
         averageRating: Math.round((sumRating / count) * 10) / 10,
         ratingClarity: Math.round((sumClarity / count) * 10) / 10,
         ratingHelpfulness: Math.round((sumHelpful / count) * 10) / 10,
         ratingSupport: Math.round((sumSupport / count) * 10) / 10,
-        totalReviews: count
+        totalReviews: count,
+        ratingDistributionClarity,
+        ratingDistributionHelpfulness,
+        ratingDistributionSupport
       };
     }
     return t;
