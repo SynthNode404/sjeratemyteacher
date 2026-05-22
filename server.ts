@@ -40,9 +40,21 @@ const DEFAULT_TEACHERS: Teacher[] = [];
 
 const DEFAULT_REVIEWS: Review[] = [];
 
+const DEFAULT_DEPARTMENTS = [
+  "Mathematics",
+  "Science",
+  "English",
+  "Humanities & Social Sciences",
+  "Languages",
+  "Creative & Performing Arts",
+  "Health & Physical Education",
+  "Technology & Applied Studies"
+];
+
 interface DatabaseSchema {
   teachers: Teacher[];
   reviews: Review[];
+  departments?: string[];
   studentEditingEnabled?: boolean;
 }
 
@@ -57,8 +69,13 @@ function readDB(): DatabaseSchema {
     if (fs.existsSync(DB_FILE)) {
       const data = fs.readFileSync(DB_FILE, "utf-8");
       memoryDB = JSON.parse(data);
-      if (memoryDB && typeof memoryDB.studentEditingEnabled === "boolean") {
-        runtimeStudentEditingEnabled = memoryDB.studentEditingEnabled;
+      if (memoryDB) {
+        if (typeof memoryDB.studentEditingEnabled === "boolean") {
+          runtimeStudentEditingEnabled = memoryDB.studentEditingEnabled;
+        }
+        if (!memoryDB.departments || !Array.isArray(memoryDB.departments)) {
+          memoryDB.departments = [...DEFAULT_DEPARTMENTS];
+        }
       }
       return memoryDB!;
     }
@@ -69,6 +86,7 @@ function readDB(): DatabaseSchema {
   const initialData: DatabaseSchema = {
     teachers: DEFAULT_TEACHERS,
     reviews: DEFAULT_REVIEWS,
+    departments: [...DEFAULT_DEPARTMENTS],
     studentEditingEnabled: runtimeStudentEditingEnabled
   };
   memoryDB = initialData;
@@ -201,6 +219,47 @@ app.post("/api/config/toggle", checkAdminAuth, (req, res) => {
   const db = readDB();
   writeDB(db);
   res.json({ success: true, studentEditingEnabled: runtimeStudentEditingEnabled });
+});
+
+// Get current departments
+app.get("/api/departments", (req, res) => {
+  const db = readDB();
+  res.json(db.departments || DEFAULT_DEPARTMENTS);
+});
+
+// Admin add a department
+app.post("/api/admin/departments", checkAdminAuth, (req, res) => {
+  const { department } = req.body;
+  if (!department || typeof department !== "string" || department.trim() === "") {
+    return res.status(400).json({ error: "Department name cannot be empty." });
+  }
+  const db = readDB();
+  if (!db.departments) {
+    db.departments = [...DEFAULT_DEPARTMENTS];
+  }
+  const trimmed = department.trim();
+  if (db.departments.some(d => d.toLowerCase() === trimmed.toLowerCase())) {
+    return res.status(400).json({ error: "Department already exists." });
+  }
+  db.departments.push(trimmed);
+  writeDB(db);
+  res.status(201).json({ success: true, departments: db.departments });
+});
+
+// Admin delete a department
+app.post("/api/admin/departments/delete", checkAdminAuth, (req, res) => {
+  const { department } = req.body;
+  if (!department || typeof department !== "string") {
+    return res.status(400).json({ error: "Department name must be provided." });
+  }
+  const db = readDB();
+  if (!db.departments) {
+    db.departments = [...DEFAULT_DEPARTMENTS];
+  }
+  const trimmed = department.trim();
+  db.departments = db.departments.filter(d => d.toLowerCase() !== trimmed.toLowerCase());
+  writeDB(db);
+  res.json({ success: true, departments: db.departments });
 });
 
 // Get all teachers

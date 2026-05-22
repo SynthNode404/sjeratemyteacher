@@ -22,7 +22,9 @@ import {
   Sparkles,
   Award,
   Users,
-  MessageSquare
+  MessageSquare,
+  Sun,
+  Moon
 } from "lucide-react";
 import { Teacher, Review } from "./types";
 import TeacherCard from "./components/TeacherCard";
@@ -32,8 +34,7 @@ import CreateTeacherModal from "./components/CreateTeacherModal";
 // "Add a simple setting in the code like: const STUDENT_EDITING_ENABLED = true;"
 const STUDENT_EDITING_ENABLED = true;
 
-const SUBJECT_DEPARTMENTS = [
-  "All Departments",
+const DEFAULT_DEPARTMENTS = [
   "Mathematics",
   "Science",
   "English",
@@ -47,7 +48,30 @@ const SUBJECT_DEPARTMENTS = [
 const GRADES = ["Year 7", "Year 8", "Year 9", "Year 10", "Year 11", "Year 12", "Alumni", "Parent"];
 
 export default function App() {
+  // Global Theme State (Persisted in localStorage)
+  const [theme, setTheme] = useState<"light" | "dark" | "">("");
+
+  // Set the theme when the component mounts on the client
+  useEffect(() => {
+    const saved = localStorage.getItem("rate-teachers-theme");
+    const initialTheme = saved === "dark" || (saved !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
+    setTheme(initialTheme);
+  }, []);
+
+  // Sync state changes with document element class
+  useEffect(() => {
+    if (!theme) return;
+    const root = document.documentElement;
+    if (theme === "dark") {
+      root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
+    }
+    localStorage.setItem("rate-teachers-theme", theme);
+  }, [theme]);
+
   // State for raw list and configuration
+  const [departments, setDepartments] = useState<string[]>(DEFAULT_DEPARTMENTS);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
   const [selectedTeacherReviews, setSelectedTeacherReviews] = useState<Review[]>([]);
@@ -75,6 +99,7 @@ export default function App() {
   const [ratingSupport, setRatingSupport] = useState(5);
   
   // Admin System Moderation State
+  const [newDepartmentInput, setNewDepartmentInput] = useState("");
   const [allSystemReviews, setAllSystemReviews] = useState<Review[]>([]);
   const [adminReportReason, setAdminReportReason] = useState<Record<string, string>>({});
   const [adminPassword, setAdminPassword] = useState("");
@@ -173,10 +198,76 @@ export default function App() {
     }
   };
 
+  // Load departments from server
+  const loadDepartments = async () => {
+    try {
+      const res = await fetch("/api/departments");
+      if (res.ok) {
+        const data = await res.json();
+        setDepartments(data);
+      }
+    } catch (err) {
+      console.error("Failed to load departments", err);
+    }
+  };
+
+  const handleAddDepartment = async (deptName: string) => {
+    try {
+      const res = await fetch("/api/admin/departments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-password": adminPassword
+        },
+        body: JSON.stringify({ department: deptName })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDepartments(data.departments);
+        showToast(`Department "${deptName}" added successfully.`, "success");
+        return true;
+      } else {
+        const err = await res.json();
+        showToast(err.error || "Failed to add department.", "error");
+        return false;
+      }
+    } catch (err) {
+      showToast("Error reaching server to add department.", "error");
+      return false;
+    }
+  };
+
+  const handleDeleteDepartment = async (deptName: string) => {
+    try {
+      const res = await fetch("/api/admin/departments/delete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-password": adminPassword
+        },
+        body: JSON.stringify({ department: deptName })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDepartments(data.departments);
+        showToast(`Department "${deptName}" deleted successfully.`, "success");
+        if (selectedDepartment === deptName) {
+          setSelectedDepartment("All Departments");
+        }
+      } else {
+        const err = await res.json();
+        showToast(err.error || "Failed to delete department.", "error");
+      }
+    } catch (err) {
+      showToast("Error reaching server to delete department.", "error");
+    }
+  };
+
   // Initialize
   useEffect(() => {
     loadTeachers();
     loadConfig();
+    loadDepartments();
   }, []);
 
   // Update lists inside admin logs if open and authorized
@@ -425,28 +516,28 @@ export default function App() {
   const globalTotalReviews = teachers.reduce((acc, t) => acc + t.totalReviews, 0);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900 selection:bg-yellow-200">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans text-slate-900 dark:text-slate-100 selection:bg-yellow-200">
       
       {/* Toast popup */}
       {feedbackMsg && (
-        <div id="global-toast-feedback" className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 rounded-xl border border-gray-100 bg-white px-5 py-3.5 shadow-2xl animate-fade-in">
-          <div className={`p-1 rounded-full ${feedbackMsg.type === "success" ? "bg-emerald-100 text-emerald-600" : "bg-rose-100 text-rose-600"}`}>
+        <div id="global-toast-feedback" className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 rounded-xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-5 py-3.5 shadow-2xl dark:shadow-none animate-fade-in">
+          <div className={`p-1 rounded-full ${feedbackMsg.type === "success" ? "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400" : "bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400"}`}>
             <Check className="h-4 w-4 stroke-[3]" />
           </div>
-          <span className="text-sm font-bold text-gray-800">{feedbackMsg.text}</span>
+          <span className="text-sm font-bold text-gray-800 dark:text-slate-200">{feedbackMsg.text}</span>
         </div>
       )}
 
-      {/* Modern High-Aesthetic Header (Vibrant Theme Indigo) */}
-      <header className="bg-gradient-to-r from-indigo-600 to-indigo-800 px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-lg z-10">
+      {/* Modern High-Aesthetic Header (Adaptive Theme Gradient) */}
+      <header className="bg-gradient-to-r from-indigo-600 to-indigo-800 dark:from-slate-900 dark:to-slate-950 px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-lg dark:shadow-none dark:border-b dark:border-slate-800 z-10">
         
         {/* Brand Logo with rotating Yellow Badge */}
         <div className="flex items-center gap-3">
-          <div className="bg-yellow-400 p-2.5 rounded-2xl rotate-3 shadow-md border-2 border-white transition transform hover:rotate-6 flex items-center justify-center">
+          <div className="bg-yellow-400 p-2.5 rounded-2xl rotate-3 shadow-md border-2 border-white dark:border-slate-800 transition transform hover:rotate-6 flex items-center justify-center">
             <Award className="w-5 h-5 text-indigo-950 font-black" />
           </div>
           <div>
-            <span className="text-xs uppercase font-extrabold tracking-widest text-indigo-200">COMPASS INTEGRATION</span>
+            <span className="text-xs uppercase font-extrabold tracking-widest text-indigo-200 dark:text-slate-400">COMPASS INTEGRATION</span>
             <h1 className="text-2xl font-black text-white tracking-tight leading-none">RATE MY TEACHERS</h1>
           </div>
         </div>
@@ -476,8 +567,8 @@ export default function App() {
           </div>
         </div>
 
-        {/* Live Config Indicator & Admin Deck Button */}
-        <div className="flex items-center gap-4 flex-wrap">
+        {/* Live Config Indicator, Theme Toggle & Admin Deck Button */}
+        <div className="flex items-center gap-3.5 flex-wrap">
           <button
             id="student-editing-indicator-badge"
             onClick={toggleStudentEditing}
@@ -492,13 +583,27 @@ export default function App() {
             <span>{studentEditingState ? "Student Editing: Enabled" : "View-only / Signed"}</span>
           </button>
 
+          {/* Global Accessible Theme Toggle */}
+          <button
+            id="global-theme-toggle-btn"
+            onClick={() => setTheme((prev) => (prev === "dark" || !prev ? "light" : "dark"))}
+            title={theme === "dark" ? "Activate Light Theme" : "Activate Dark Theme"}
+            className="p-2.5 rounded-2xl bg-indigo-700/50 dark:bg-slate-800 hover:bg-yellow-400 dark:hover:bg-yellow-400 hover:text-indigo-950 dark:hover:text-indigo-950 text-indigo-100 dark:text-slate-200 transition border border-indigo-500/30 dark:border-slate-700 focus:outline-none focus:ring-1 focus:ring-yellow-400 flex items-center justify-center cursor-pointer"
+          >
+            {theme === "dark" ? (
+              <Sun className="h-4 w-4 text-yellow-350 stroke-[2.5]" />
+            ) : (
+              <Moon className="h-4 w-4 stroke-[2.5]" />
+            )}
+          </button>
+
           <button
             id="admin-panel-trigger-btn"
             onClick={() => setIsAdminPanelOpen(!isAdminPanelOpen)}
             className={`px-4.5 py-2 rounded-2xl font-bold text-xs flex items-center gap-1.5 transition ${
               isAdminPanelOpen
                 ? "bg-yellow-400 text-indigo-950 shadow-md"
-                : "bg-white text-indigo-700 hover:bg-yellow-500 hover:text-indigo-950"
+                : "bg-white dark:bg-slate-800 text-indigo-700 dark:text-slate-200 hover:bg-yellow-500 hover:text-indigo-950 dark:hover:bg-yellow-400 dark:hover:text-indigo-950"
             }`}
           >
             <Shield className="h-3.5 w-3.5" />
@@ -668,6 +773,60 @@ export default function App() {
                       </div>
                     </div>
 
+                    <div className="bg-indigo-900/70 p-4 rounded-xl border border-indigo-800 space-y-3">
+                      <h4 className="text-xs uppercase font-extrabold tracking-widest text-indigo-300">
+                        Manage Subject Departments
+                      </h4>
+                      
+                      <form
+                        onSubmit={async (e) => {
+                          e.preventDefault();
+                          if (!newDepartmentInput.trim()) return;
+                          const success = await handleAddDepartment(newDepartmentInput);
+                          if (success) {
+                            setNewDepartmentInput("");
+                          }
+                        }}
+                        className="flex gap-1.5"
+                      >
+                        <input
+                          id="admin-add-department-input"
+                          type="text"
+                          placeholder="New department..."
+                          value={newDepartmentInput}
+                          onChange={(e) => setNewDepartmentInput(e.target.value)}
+                          className="flex-1 bg-indigo-950/80 border border-indigo-800 rounded-lg px-2 p-1.5 text-xs text-white placeholder-indigo-400 focus:outline-none focus:border-yellow-400"
+                        />
+                        <button
+                          id="admin-add-department-btn"
+                          type="submit"
+                          className="px-3 bg-yellow-400 hover:bg-yellow-500 text-indigo-950 rounded-lg text-xs font-extrabold transition shrink-0 cursor-pointer"
+                        >
+                          Add
+                        </button>
+                      </form>
+
+                      <div className="space-y-1 max-h-36 overflow-y-auto pr-1">
+                        {departments.map((dept) => (
+                          <div
+                            key={dept}
+                            className="flex items-center justify-between text-xs bg-indigo-950/40 border border-indigo-850/60 p-1.5 px-2 rounded-lg"
+                          >
+                            <span className="truncate font-semibold text-indigo-100">{dept}</span>
+                            <button
+                              id={`admin-delete-dept-${dept.replace(/\s+/g, '-').toLowerCase()}`}
+                              type="button"
+                              onClick={() => handleDeleteDepartment(dept)}
+                              className="p-0.5 rounded text-indigo-400 hover:text-rose-400 hover:bg-indigo-900/30 transition cursor-pointer"
+                              title="Delete department"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
                     <div className="bg-indigo-900/60 p-4 rounded-xl border border-indigo-800">
                       <h4 className="text-xs uppercase font-extrabold tracking-widest text-indigo-300 mb-3 block">Danger Area: Destructive list</h4>
                       <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
@@ -696,24 +855,24 @@ export default function App() {
         <div className="lg:col-span-8 flex flex-col gap-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div>
-              <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
-                <BookOpen className="h-5 w-5 text-indigo-600" />
+              <h2 className="text-xl font-black text-slate-800 dark:text-white flex items-center gap-2">
+                <BookOpen className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                 Curriculum Faculty Directory
               </h2>
-              <p className="text-xs text-slate-500">Select any teacher profile to read reviews and submit ratings</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Select any teacher profile to read reviews and submit ratings</p>
             </div>
 
             {/* Department Faculty Filter */}
             <div className="flex items-center gap-2 w-full md:w-auto">
-              <span className="text-xs font-bold text-slate-400 uppercase shrink-0">Faculty:</span>
+              <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase shrink-0">Faculty:</span>
               <select
                 id="faculty-department-dropdown"
                 value={selectedDepartment}
                 onChange={(e) => setSelectedDepartment(e.target.value)}
-                className="bg-white border-2 border-slate-100 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-700 focus:outline-none focus:border-indigo-500 w-full md:w-auto shadow-xs"
+                className="bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-indigo-500 w-full md:w-auto shadow-xs"
               >
-                {SUBJECT_DEPARTMENTS.map((dept) => (
-                  <option key={dept} value={dept}>
+                {["All Departments", ...departments].map((dept) => (
+                  <option key={dept} value={dept} className="bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200">
                     {dept}
                   </option>
                 ))}
@@ -724,12 +883,12 @@ export default function App() {
           {/* Teacher Bento Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {filteredTeachers.length === 0 ? (
-              <div className="col-span-full bg-white rounded-3xl p-12 text-center border-2 border-dashed border-gray-200">
-                <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-500 mb-3">
+              <div className="col-span-full bg-white dark:bg-slate-900 rounded-3xl p-12 text-center border-2 border-dashed border-gray-200 dark:border-slate-800">
+                <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 dark:bg-slate-800 text-amber-500 mb-3">
                   <Search className="h-6 w-6" />
                 </div>
-                <h3 className="text-base font-bold text-gray-800">No teachers found</h3>
-                <p className="text-xs text-gray-400 mt-1 max-w-sm mx-auto">
+                <h3 className="text-base font-bold text-gray-800 dark:text-white">No teachers found</h3>
+                <p className="text-xs text-gray-400 dark:text-slate-400 mt-1 max-w-sm mx-auto">
                   Try refining your search keyword or selecting a different Faculty department from the filter dropdown above.
                 </p>
               </div>
@@ -745,14 +904,14 @@ export default function App() {
           </div>
 
           {/* Upload New Profile Action Card (Compass Photo & honorific prefix) */}
-          <div className="bg-[#f0f4ff] rounded-3xl p-6 border-2 border-indigo-100/80 flex flex-col md:flex-row md:items-center justify-between gap-5 shadow-xs">
+          <div className="bg-[#f0f4ff] dark:bg-indigo-900/10 rounded-3xl p-6 border-2 border-indigo-100/80 dark:border-indigo-900/40 flex flex-col md:flex-row md:items-center justify-between gap-5 shadow-xs">
             <div className="flex items-start gap-4">
-              <div className="h-12 w-12 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
+              <div className="h-12 w-12 rounded-2xl bg-indigo-100 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
                 <Sparkles className="h-6 w-6" />
               </div>
               <div>
-                <h4 className="font-black text-slate-800">Missing a teacher profile on this list?</h4>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                <h4 className="font-black text-slate-800 dark:text-white">Missing a teacher profile on this list?</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
                   Authorized administrators can quickly establish profile pages using the official dashboard tools!
                 </p>
               </div>
@@ -774,13 +933,13 @@ export default function App() {
             <div className="flex flex-col gap-6">
               
               {/* Profile Card Summary */}
-              <div className="bg-white rounded-3xl p-6 shadow-md border-2 border-slate-100 flex flex-col items-center text-center relative overflow-hidden">
+              <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-md border-2 border-slate-100 dark:border-slate-800 flex flex-col items-center text-center relative overflow-hidden">
                 <div className="absolute top-3 right-3">
-                  <span className="text-[10px] uppercase font-mono tracking-wider text-slate-400">ID: {selectedTeacher.id}</span>
+                  <span className="text-[10px] uppercase font-mono tracking-wider text-slate-400 dark:text-slate-500">ID: {selectedTeacher.id}</span>
                 </div>
 
                 <div className="relative mb-4 mt-1">
-                  <div className="w-28 h-28 rounded-3xl bg-indigo-50 overflow-hidden border-4 border-white shadow-lg relative flex items-center justify-center">
+                  <div className="w-28 h-28 rounded-3xl bg-indigo-50 dark:bg-slate-950 overflow-hidden border-4 border-white dark:border-slate-900 shadow-lg relative flex items-center justify-center animate-pulse">
                     {selectedTeacher.avatar ? (
                       <img
                         src={selectedTeacher.avatar}
@@ -788,38 +947,38 @@ export default function App() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <span className="text-3xl font-black text-indigo-500">
+                      <span className="text-3xl font-black text-indigo-500 dark:text-indigo-400">
                         {selectedTeacher.name.split(" ").map(n => n[0]).join("")}
                       </span>
                     )}
                   </div>
-                  <div className="absolute -bottom-2 -right-2 bg-yellow-400 text-indigo-950 font-black px-2.5 py-1 rounded-xl text-xs border-2 border-white shadow-md">
+                  <div className="absolute -bottom-2 -right-2 bg-yellow-400 text-indigo-950 font-black px-2.5 py-1 rounded-xl text-xs border-2 border-white dark:border-slate-900 shadow-md">
                     {selectedTeacher.totalReviews > 0 ? selectedTeacher.averageRating.toFixed(1) : "—"}
                   </div>
                 </div>
 
-                <h2 className="text-xl font-black text-slate-900 tracking-tight">{selectedTeacher.name}</h2>
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{selectedTeacher.department} Department</span>
-                <p className="text-indigo-600 font-extrabold text-sm mt-1">{selectedTeacher.subject}</p>
+                <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">{selectedTeacher.name}</h2>
+                <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{selectedTeacher.department} Department</span>
+                <p className="text-indigo-600 dark:text-indigo-400 font-extrabold text-sm mt-1">{selectedTeacher.subject}</p>
                 
                 {selectedTeacher.bio && (
-                  <p className="text-xs text-slate-500 mt-3 border-t border-slate-100 pt-3 italic">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-3 border-t border-slate-100 dark:border-slate-800 pt-3 italic">
                     &ldquo;{selectedTeacher.bio}&rdquo;
                   </p>
                 )}
 
                 {/* Subcategory Ratings Progression Bars */}
                 {selectedTeacher.totalReviews > 0 ? (
-                  <div className="w-full space-y-3 mt-5 text-left border-t border-slate-100 pt-5">
-                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Classroom Sub-ratings</span>
+                  <div className="w-full space-y-3 mt-5 text-left border-t border-slate-100 dark:border-slate-800 pt-5">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Classroom Sub-ratings</span>
                     
                     {/* Clarity Progress Indicator */}
                     <div>
-                      <div className="flex justify-between text-xs font-bold text-slate-600">
+                      <div className="flex justify-between text-xs font-bold text-slate-600 dark:text-slate-350">
                         <span>Teacher Clarity</span>
-                        <span className="text-indigo-600">{(selectedTeacher.ratingClarity * 20).toFixed(0)}%</span>
+                        <span className="text-indigo-600 dark:text-indigo-400">{(selectedTeacher.ratingClarity * 20).toFixed(0)}%</span>
                       </div>
-                      <div className="w-full bg-slate-100 h-1.5 rounded-full mt-1.5">
+                      <div className="w-full bg-slate-100 dark:bg-slate-850 h-1.5 rounded-full mt-1.5">
                         <div
                           className="bg-indigo-500 h-1.5 rounded-full transition-all duration-500 shadow-xs"
                           style={{ width: `${selectedTeacher.ratingClarity * 20}%` }}
@@ -829,11 +988,11 @@ export default function App() {
 
                     {/* Helpfulness Progress Indicator */}
                     <div>
-                      <div className="flex justify-between text-xs font-bold text-slate-600">
+                      <div className="flex justify-between text-xs font-bold text-slate-600 dark:text-slate-350">
                         <span>Classroom Helpfulness</span>
                         <span className="text-amber-500">{(selectedTeacher.ratingHelpfulness * 20).toFixed(0)}%</span>
                       </div>
-                      <div className="w-full bg-slate-100 h-1.5 rounded-full mt-1.5">
+                      <div className="w-full bg-slate-100 dark:bg-slate-850 h-1.5 rounded-full mt-1.5">
                         <div
                           className="bg-amber-400 h-1.5 rounded-full transition-all duration-500 shadow-xs"
                           style={{ width: `${selectedTeacher.ratingHelpfulness * 20}%` }}
@@ -843,11 +1002,11 @@ export default function App() {
 
                     {/* Student Support Progress Indicator */}
                     <div>
-                      <div className="flex justify-between text-xs font-bold text-slate-600">
+                      <div className="flex justify-between text-xs font-bold text-slate-600 dark:text-slate-350">
                         <span>Extra Student Support</span>
                         <span className="text-emerald-500">{(selectedTeacher.ratingSupport * 20).toFixed(0)}%</span>
                       </div>
-                      <div className="w-full bg-slate-100 h-1.5 rounded-full mt-1.5">
+                      <div className="w-full bg-slate-100 dark:bg-slate-850 h-1.5 rounded-full mt-1.5">
                         <div
                           className="bg-emerald-500 h-1.5 rounded-full transition-all duration-500 shadow-xs"
                           style={{ width: `${selectedTeacher.ratingSupport * 20}%` }}
@@ -856,7 +1015,7 @@ export default function App() {
                     </div>
                   </div>
                 ) : (
-                  <div className="mt-5 p-4 rounded-2xl bg-slate-50 text-slate-400 text-xs text-center border border-slate-100">
+                  <div className="mt-5 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 text-slate-400 dark:text-slate-500 text-xs text-center border border-slate-100 dark:border-slate-850">
                     No classroom insights have been reported yet. Start the record by leaving the first score card!
                   </div>
                 )}
@@ -865,38 +1024,36 @@ export default function App() {
                 <button
                   id="write-review-on-profile-card-btn"
                   onClick={() => setIsWriteReviewOpen(true)}
-                  className="w-full mt-5 bg-indigo-600 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-indigo-200 hover:scale-[1.01] active:scale-[0.99] transition flex items-center justify-center gap-2 text-sm"
+                  className="w-full mt-5 bg-indigo-600 text-white font-bold py-3.5 rounded-2xl shadow-lg dark:shadow-none shadow-indigo-200/50 hover:scale-[1.01] active:scale-[0.99] transition flex items-center justify-center gap-2 text-sm"
                 >
                   <Plus className="h-4.5 w-4.5" />
                   Leave rating & Review
                 </button>
-              </div>
-
-              {/* Collapsible Write Review Form Segment */}
+              </div>              {/* Collapsible Write Review Form Segment */}
               {isWriteReviewOpen && (
-                <div id="write-review-form-segment" className="bg-white rounded-3xl p-5 shadow-lg border border-indigo-100 animate-slide-in">
-                  <div className="flex items-center justify-between border-b border-gray-100 pb-2 mb-4">
-                    <h3 className="text-sm font-extrabold text-slate-800 uppercase tracking-tight flex items-center gap-1.5">
-                      <Plus className="h-4 w-4 text-indigo-600" />
+                <div id="write-review-form-segment" className="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-lg dark:shadow-none border border-indigo-100 dark:border-slate-800 animate-slide-in">
+                  <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-2 mb-4">
+                    <h3 className="text-sm font-extrabold text-slate-800 dark:text-white uppercase tracking-tight flex items-center gap-1.5">
+                      <Plus className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
                       Publish Rating Card
                     </h3>
-                    <button onClick={() => setIsWriteReviewOpen(false)} className="text-gray-400 hover:text-gray-600">
+                    <button onClick={() => setIsWriteReviewOpen(false)} className="text-gray-400 dark:text-slate-500 hover:text-gray-650 hover:text-gray-600 dark:hover:text-white">
                       <X className="h-4 w-4" />
                     </button>
                   </div>
 
                   {formFeedback && (
-                    <div className="mb-4 rounded-xl bg-orange-50 p-3 text-xs font-semibold text-orange-700 border border-orange-100 leading-relaxed">
+                    <div className="mb-4 rounded-xl bg-orange-50 dark:bg-orange-950/20 p-3 text-xs font-semibold text-orange-700 dark:text-orange-300 border border-orange-100 dark:border-orange-900/40 leading-relaxed">
                       {formFeedback}
                     </div>
                   )}
 
                   {!studentEditingState && (
-                    <div className="rounded-xl bg-rose-50 p-4 text-xs font-semibold text-rose-700 border border-rose-100 mb-4 flex items-start gap-2">
+                    <div className="rounded-xl bg-rose-50 dark:bg-rose-950/20 p-4 text-xs font-semibold text-rose-700 dark:text-rose-300 border border-rose-100 dark:border-rose-900/40 mb-4 flex items-start gap-2">
                       <Lock className="h-4 w-4 text-rose-500 shrink-0 mt-0.5" />
                       <div>
                         <p className="font-bold">System Lock: View Only</p>
-                        <p className="font-normal text-rose-600 mt-0.5">Students are currently restricted from publishing ratings. Turn edit permission on within the Admin Deck.</p>
+                        <p className="font-normal text-rose-600 dark:text-rose-450 mt-0.5">Students are currently restricted from publishing ratings. Turn edit permission on within the Admin Deck.</p>
                       </div>
                     </div>
                   )}
@@ -905,7 +1062,7 @@ export default function App() {
                     
                     {/* Visual Stars for Clarity */}
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
                         Explanation Clarity Rating
                       </label>
                       <div className="flex gap-1.5">
@@ -917,7 +1074,7 @@ export default function App() {
                             disabled={!studentEditingState}
                             className="p-1 group shrink-0"
                           >
-                            <Star className={`h-6 w-6 transition ${s <= ratingClarity ? "fill-amber-400 stroke-amber-400 hover:scale-110" : "text-gray-200"}`} />
+                            <Star className={`h-6 w-6 transition ${s <= ratingClarity ? "fill-amber-400 stroke-amber-400 hover:scale-110" : "text-gray-200 dark:text-slate-700"}`} />
                           </button>
                         ))}
                       </div>
@@ -925,7 +1082,7 @@ export default function App() {
 
                     {/* Visual Stars for Helpfulness */}
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
                         Classroom Helpfulness Rating
                       </label>
                       <div className="flex gap-1.5">
@@ -937,7 +1094,7 @@ export default function App() {
                             disabled={!studentEditingState}
                             className="p-1 group shrink-0"
                           >
-                            <Star className={`h-6 w-6 transition ${s <= ratingHelpfulness ? "fill-amber-400 stroke-amber-400 hover:scale-110" : "text-gray-200"}`} />
+                            <Star className={`h-6 w-6 transition ${s <= ratingHelpfulness ? "fill-amber-400 stroke-amber-400 hover:scale-110" : "text-gray-200 dark:text-slate-700"}`} />
                           </button>
                         ))}
                       </div>
@@ -945,7 +1102,7 @@ export default function App() {
 
                     {/* Visual Stars for Extra Support */}
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
                         Out of Hours Support Rating
                       </label>
                       <div className="flex gap-1.5">
@@ -957,7 +1114,7 @@ export default function App() {
                             disabled={!studentEditingState}
                             className="p-1 group shrink-0"
                           >
-                            <Star className={`h-6 w-6 transition ${s <= ratingSupport ? "fill-amber-400 stroke-amber-400 hover:scale-110" : "text-gray-200"}`} />
+                            <Star className={`h-6 w-6 transition ${s <= ratingSupport ? "fill-amber-400 stroke-amber-400 hover:scale-110" : "text-gray-200 dark:text-slate-700"}`} />
                           </button>
                         ))}
                       </div>
@@ -965,7 +1122,7 @@ export default function App() {
 
                     {/* Comment Area */}
                     <div>
-                      <label htmlFor="review-comment-textarea" className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                      <label htmlFor="review-comment-textarea" className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
                         Review Commentary <span className="text-rose-500">*</span>
                       </label>
                       <textarea
@@ -977,9 +1134,9 @@ export default function App() {
                         disabled={!studentEditingState}
                         rows={3.5}
                         maxLength={400}
-                        className="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs placeholder-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
+                        className="w-full rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-white px-3 py-2 text-xs placeholder-gray-400 dark:placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
                       />
-                      <div className="flex justify-between items-center text-[10px] text-gray-400 mt-1">
+                      <div className="flex justify-between items-center text-[10px] text-gray-400 dark:text-slate-500 mt-1">
                         <span className="font-semibold text-rose-500">Spam Checker active</span>
                         <span>{reviewComment.length}/400 characters</span>
                       </div>
@@ -988,7 +1145,7 @@ export default function App() {
                     <div className="grid grid-cols-2 gap-3.5">
                       {/* Author */}
                       <div>
-                        <label htmlFor="review-author-input" className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
+                        <label htmlFor="review-author-input" className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
                           Your Identifier
                         </label>
                         <input
@@ -998,13 +1155,13 @@ export default function App() {
                           value={reviewAuthor}
                           onChange={(e) => setReviewAuthor(e.target.value)}
                           disabled={reviewIsAnonymous || !studentEditingState}
-                          className="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs placeholder-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
+                          className="w-full rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-white px-3 py-2 text-xs placeholder-gray-400 dark:placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
                         />
                       </div>
 
                       {/* Grade */}
                       <div>
-                        <label htmlFor="review-grade-select" className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
+                        <label htmlFor="review-grade-select" className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
                           Grade Context
                         </label>
                         <select
@@ -1012,10 +1169,10 @@ export default function App() {
                           value={reviewGrade}
                           onChange={(e) => setReviewGrade(e.target.value)}
                           disabled={!studentEditingState}
-                          className="w-full rounded-xl border border-gray-200 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          className="w-full rounded-xl border border-gray-205 border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-900 dark:text-white px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                         >
                           {GRADES.map((g) => (
-                            <option key={g} value={g}>
+                            <option key={g} value={g} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
                               {g}
                             </option>
                           ))}
@@ -1034,9 +1191,9 @@ export default function App() {
                           if (e.target.checked) setReviewAuthor("");
                         }}
                         disabled={!studentEditingState}
-                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                        className="rounded border-gray-300 dark:border-slate-800 text-indigo-600 focus:ring-indigo-500"
                       />
-                      <label htmlFor="anonymous-checkbox" className="text-xs font-bold text-slate-600 select-none cursor-pointer">
+                      <label htmlFor="anonymous-checkbox" className="text-xs font-bold text-slate-650 dark:text-slate-350 select-none cursor-pointer">
                         Post Anonymously
                       </label>
                     </div>
@@ -1046,14 +1203,14 @@ export default function App() {
                       <button
                         type="button"
                         onClick={() => setIsWriteReviewOpen(false)}
-                        className="flex-1 rounded-xl border border-gray-200 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 uppercase"
+                        className="flex-1 rounded-xl border border-gray-200 dark:border-slate-800 py-2 text-xs font-semibold text-gray-700 dark:text-slate-350 hover:bg-gray-50 dark:hover:bg-slate-805 hover:text-gray-900 dark:hover:text-white uppercase"
                       >
                         Cancel
                       </button>
                       <button
                         type="submit"
                         disabled={!studentEditingState}
-                        className="flex-1 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 py-2.5 text-xs font-extrabold text-white uppercase shadow-md hover:from-amber-600 hover:to-amber-700 disabled:opacity-50"
+                        className="flex-grow rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 py-2.5 text-xs font-extrabold text-white uppercase shadow-md hover:from-amber-600 hover:to-amber-700 disabled:opacity-50 hover:scale-[1.01] active:scale-[0.99] transition duration-150"
                       >
                         Publish Card
                       </button>
@@ -1064,22 +1221,22 @@ export default function App() {
 
               {/* Reviews Feed Stack */}
               <div className="flex flex-col gap-4">
-                <div className="flex items-center justify-between border-b border-gray-100 pb-2.5">
-                  <h3 className="text-xs font-black text-slate-600 uppercase tracking-widest">
+                <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-2.5">
+                  <h3 className="text-xs font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest">
                     {selectedTeacherReviews.length} Student Reviews
                   </h3>
 
                   {/* Ordering Criteria */}
                   <div className="flex items-center gap-1">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">Sort:</span>
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Sort:</span>
                     <select
                       id="reviews-sorting-dropdown"
                       value={reviewsSortBy}
                       onChange={(e) => setReviewsSortBy(e.target.value as any)}
-                      className="bg-transparent text-[11px] font-bold text-slate-600 outline-none cursor-pointer"
+                      className="bg-transparent dark:bg-slate-900 text-[11px] font-bold text-slate-600 dark:text-slate-350 outline-none cursor-pointer"
                     >
-                      <option value="newest">Newest First</option>
-                      <option value="highest">Highest Rated</option>
+                      <option value="newest" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">Newest First</option>
+                      <option value="highest" className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">Highest Rated</option>
                     </select>
                   </div>
                 </div>
@@ -1087,7 +1244,7 @@ export default function App() {
                 {/* List items */}
                 <div className="space-y-4 max-h-[32rem] overflow-y-auto pr-1">
                   {sortedReviews.length === 0 ? (
-                    <div className="bg-white rounded-3xl p-8 text-center border border-slate-100 text-slate-400 text-xs">
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 text-center border border-slate-100 dark:border-slate-800 text-slate-450 dark:text-slate-400 text-xs">
                       No ratings yet. Click leave rating above to capture the first school review!
                     </div>
                   ) : (
@@ -1095,7 +1252,7 @@ export default function App() {
                       <div
                         key={rev.id}
                         id={`review-item-${rev.id}`}
-                        className="bg-white p-5 rounded-3xl shadow-xs border border-slate-100 transition hover:border-slate-200"
+                        className="bg-white dark:bg-slate-900 p-5 rounded-3xl shadow-xs border border-slate-100 dark:border-slate-800 transition hover:border-slate-200 dark:hover:border-slate-700"
                       >
                         <div className="flex justify-between items-start mb-2">
                           <div className="flex items-center gap-1.5 flex-wrap">
@@ -1104,16 +1261,16 @@ export default function App() {
                                 <Star
                                   key={i}
                                   className={`h-3.5 w-3.5 ${
-                                    i < Math.round(rev.rating) ? "fill-amber-400 stroke-amber-400" : "text-gray-200"
+                                    i < Math.round(rev.rating) ? "fill-amber-400 stroke-amber-400" : "text-gray-200 dark:text-slate-750"
                                   }`}
                                 />
                               ))}
                             </div>
-                            <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded">
+                            <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest bg-indigo-50 dark:bg-indigo-950 px-2 py-0.5 rounded">
                               {rev.grade}
                             </span>
                           </div>
-                          <span className="text-[10px] font-bold text-slate-400">
+                          <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">
                             {new Date(rev.date).toLocaleDateString(undefined, {
                               month: "short",
                               day: "numeric",
@@ -1122,27 +1279,27 @@ export default function App() {
                           </span>
                         </div>
 
-                        <p className="text-slate-600 text-xs leading-relaxed mb-4 whitespace-pre-wrap">
+                        <p className="text-slate-600 dark:text-slate-300 text-xs leading-relaxed mb-4 whitespace-pre-wrap">
                           {rev.comment}
                         </p>
 
-                        <div className="flex items-center justify-between border-t border-gray-50 pt-3">
+                        <div className="flex items-center justify-between border-t border-gray-50 dark:border-slate-805 pt-3 dark:border-slate-800">
                           <div className="flex items-center gap-3">
                             <button
                               onClick={() => handleLikeReview(rev.id)}
-                              className="text-[10px] font-black uppercase text-slate-400 hover:text-indigo-600 flex items-center gap-1 select-none"
+                              className="text-[10px] font-black uppercase text-slate-400 hover:text-indigo-600 dark:hover:text-amber-400 flex items-center gap-1 select-none cursor-pointer"
                               title="Upvote review"
                             >
                               <ThumbsUp className="h-3 w-3" /> Helpful ({rev.likes})
                             </button>
                             <button
                               onClick={() => handleReportReview(rev.id)}
-                              className="text-[10px] font-black uppercase text-slate-400 hover:text-red-500"
+                              className="text-[10px] font-black uppercase text-slate-400 hover:text-red-500 cursor-pointer"
                             >
                               Report Spam
                             </button>
                           </div>
-                          <div className="text-[10px] italic text-slate-400 font-bold">
+                          <div className="text-[10px] italic text-slate-400 dark:text-slate-500 font-bold">
                             — {rev.isAnonymous ? "Anonymous" : rev.author}
                           </div>
                         </div>
@@ -1154,12 +1311,12 @@ export default function App() {
 
             </div>
           ) : (
-            <div className="bg-white rounded-3xl p-12 text-center border-2 border-gray-100 flex flex-col items-center justify-center min-h-[25rem]">
-              <div className="h-16 w-16 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-500 mb-4 animate-bounce">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-12 text-center border-2 border-gray-100 dark:border-slate-800 flex flex-col items-center justify-center min-h-[25rem]">
+              <div className="h-16 w-16 bg-indigo-50 dark:bg-slate-800 text-indigo-500 dark:text-indigo-400 rounded-2xl flex items-center justify-center mb-4 animate-bounce">
                 <Users className="h-8 w-8" />
               </div>
-              <p className="text-gray-800 font-extrabold text-sm">No teacher profile selected</p>
-              <p className="text-xs text-gray-400 mt-2 max-w-xs leading-relaxed">
+              <p className="text-gray-800 dark:text-white font-extrabold text-sm">No teacher profile selected</p>
+              <p className="text-xs text-gray-400 dark:text-slate-500 mt-2 max-w-xs leading-relaxed">
                 Click index directory items or visual cards to view student reviews, average statistics, and sub-clarity ratings!
               </p>
             </div>
@@ -1169,7 +1326,7 @@ export default function App() {
       </main>
 
       {/* Modern Static Humanized Footer requested by design */}
-      <footer className="mt-auto bg-white border-t border-slate-200 px-6 py-4 flex flex-col md:flex-row items-center justify-between text-[11px] font-extrabold text-slate-400 uppercase tracking-widest gap-2">
+      <footer className="mt-auto bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-850 px-6 py-4 flex flex-col md:flex-row items-center justify-between text-[11px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest gap-2">
         <div className="flex flex-wrap justify-center gap-x-6 gap-y-1">
           <span className="flex items-center gap-1">
             <Check className="h-3 w-3 text-emerald-500 stroke-[3]" /> Spam Filter: Dynamic
@@ -1181,9 +1338,9 @@ export default function App() {
             <Check className="h-3 w-3 text-emerald-500 stroke-[3]" /> Compass profiles synced
           </span>
         </div>
-        <div className="text-indigo-600 text-center md:text-right font-black flex items-center justify-center md:justify-end gap-2.5">
+        <div className="text-indigo-600 dark:text-indigo-400 text-center md:text-right font-black flex items-center justify-center md:justify-end gap-2.5">
           <span>Rate My Teachers • Built for high fidelity transparency • 2026</span>
-          <span className="bg-indigo-50 text-indigo-700 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-indigo-100 uppercase tracking-normal">v1.2.2</span>
+          <span className="bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-900/40 uppercase tracking-normal">v1.2.2</span>
         </div>
       </footer>
 
@@ -1193,6 +1350,7 @@ export default function App() {
           studentEditingEnabled={studentEditingState}
           adminPassword={adminPassword}
           isAdminAuthenticated={isAdminAuthenticated}
+          departments={departments}
           onAdminLoginSuccess={(password) => {
             setAdminPassword(password);
             setIsAdminAuthenticated(true);

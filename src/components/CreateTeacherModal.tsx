@@ -14,6 +14,7 @@ interface CreateTeacherModalProps {
   adminPassword?: string;
   isAdminAuthenticated?: boolean;
   onAdminLoginSuccess?: (password: string) => void;
+  departments?: string[];
 }
 
 const DEPARTMENTS = [
@@ -35,11 +36,14 @@ export default function CreateTeacherModal({
   studentEditingEnabled,
   adminPassword = "",
   isAdminAuthenticated = false,
-  onAdminLoginSuccess
+  onAdminLoginSuccess,
+  departments = []
 }: CreateTeacherModalProps) {
+  const activeDepartments = departments.length > 0 ? departments : DEPARTMENTS;
+
   const [name, setName] = useState("");
   const [subject, setSubject] = useState("");
-  const [department, setDepartment] = useState(DEPARTMENTS[0]);
+  const [department, setDepartment] = useState(activeDepartments[0]);
   const [bio, setBio] = useState("");
   const [accentColor, setAccentColor] = useState("emerald");
   const [uploadingImage, setUploadingImage] = useState<string | null>(null);
@@ -158,21 +162,21 @@ export default function CreateTeacherModal({
     >
       <div
         id="create-teacher-modal-main"
-        className="relative w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl"
+        className="relative w-full max-w-lg overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-transparent dark:border-slate-850 shadow-2xl"
       >
         {/* Decorative Indicator Bar */}
         <div className={`h-2.5 w-full bg-gradient-to-r from-teal-500 to-indigo-600`} />
 
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-100 p-6">
+        <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-805 p-6 dark:border-slate-800">
           <div>
-            <h2 className="text-xl font-extrabold text-gray-900">Add Teacher Profile</h2>
-            <p className="text-xs text-gray-500 mt-0.5">Let review-sharing help your peers succeed</p>
+            <h2 className="text-xl font-extrabold text-gray-900 dark:text-white">Add Teacher Profile</h2>
+            <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">Let review-sharing help your peers succeed</p>
           </div>
           <button
             id="close-create-teacher-modal"
             onClick={onClose}
-            className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-900"
+            className="rounded-full p-1 text-gray-400 dark:text-slate-500 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-white"
           >
             <X className="h-5 w-5" />
           </button>
@@ -180,11 +184,11 @@ export default function CreateTeacherModal({
 
         {/* Error States or Warning States */}
         {!studentEditingEnabled && (
-          <div className="bg-amber-50 border-y border-amber-200/60 p-4 flex gap-3 text-amber-800 text-xs font-semibold select-none leading-relaxed">
+          <div className="bg-amber-50 dark:bg-amber-950/20 border-y border-amber-200/60 dark:border-amber-900/40 p-4 flex gap-3 text-amber-800 dark:text-amber-300 text-xs font-semibold select-none leading-relaxed">
             <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
             <div>
               <p className="font-bold">View-Only Mode is ACTIVE</p>
-              <p className="font-normal text-amber-700 mt-0.5">
+              <p className="font-normal text-amber-700 dark:text-amber-400 mt-0.5">
                 Students/citizens are temporarily restricted from modifying content. You can enable editing at any time from the toggle tool in the Admin Menu above.
               </p>
             </div>
@@ -193,11 +197,11 @@ export default function CreateTeacherModal({
 
         {!isAdminAuthenticated ? (
           <div className="p-8 text-center max-w-sm mx-auto">
-            <div className="inline-flex items-center justify-center p-4 bg-indigo-50 rounded-full text-indigo-600 mb-4 animate-bounce">
+            <div className="inline-flex items-center justify-center p-4 bg-indigo-50 dark:bg-indigo-950/40 rounded-full text-indigo-600 dark:text-indigo-400 mb-4 animate-bounce">
               <Lock className="w-8 h-8 stroke-[2.5]" />
             </div>
-            <h3 className="text-base font-black text-gray-950 tracking-tight uppercase">Admin Verification Required</h3>
-            <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
+            <h3 className="text-base font-black text-gray-950 dark:text-white tracking-tight uppercase">Admin Verification Required</h3>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
               Adding new teacher profiles is restricted to authorized school administrators. Verify using the administration password.
             </p>
             
@@ -206,9 +210,9 @@ export default function CreateTeacherModal({
               setModalAdminPasswordError("");
               try {
                 const res = await fetch("/api/admin/verify", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ password: modalAdminPasswordInput })
+                   method: "POST",
+                   headers: { "Content-Type": "application/json" },
+                   body: JSON.stringify({ password: modalAdminPasswordInput })
                 });
                 if (res.ok) {
                   if (onAdminLoginSuccess) {
@@ -231,11 +235,11 @@ export default function CreateTeacherModal({
                   setModalAdminPasswordInput(e.target.value);
                   setModalAdminPasswordError("");
                 }}
-                className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-2.5 px-4 text-xs text-center font-bold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
+                className="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-800 rounded-xl py-2.5 px-4 text-xs text-center font-bold text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
                 autoFocus
               />
               {modalAdminPasswordError && (
-                <p className="text-[10px] font-bold text-rose-500 bg-rose-50 py-1 px-3 rounded-lg border border-rose-100 animate-pulse">
+                <p className="text-[10px] font-bold text-rose-500 bg-rose-50 dark:bg-rose-950/35 py-1 px-3 rounded-lg border border-rose-100 dark:border-rose-900/40 animate-pulse">
                   {modalAdminPasswordError}
                 </p>
               )}
@@ -244,7 +248,7 @@ export default function CreateTeacherModal({
                   id="modal-cancel-auth-btn"
                   type="button"
                   onClick={onClose}
-                  className="flex-grow py-2.5 border border-slate-200 text-slate-700 font-bold text-[10px] rounded-xl hover:bg-slate-50 transition uppercase"
+                  className="flex-grow py-2.5 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-bold text-[10px] rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition uppercase"
                 >
                   Cancel
                 </button>
@@ -259,9 +263,9 @@ export default function CreateTeacherModal({
             </form>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          <form onSubmit={handleSubmit} className="p-6 space-y-5 bg-white dark:bg-slate-900">
             {errorMessage && (
-            <div className="rounded-lg bg-rose-50 p-3.5 text-xs font-semibold text-rose-700 border border-rose-100 flex items-center gap-2">
+            <div className="rounded-lg bg-rose-50 dark:bg-rose-950/20 p-3.5 text-xs font-semibold text-rose-700 dark:text-rose-300 border border-rose-100 dark:border-rose-900/40 flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-rose-500 shrink-0" />
               <span>{errorMessage}</span>
             </div>
@@ -269,7 +273,7 @@ export default function CreateTeacherModal({
 
           {/* Teacher Image Upload Zone */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-2">
+            <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-slate-400 mb-2">
               Teacher Image / Compass Screenshot
             </label>
             <div
@@ -279,7 +283,7 @@ export default function CreateTeacherModal({
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
               className={`relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-5 text-center transition cursor-pointer ${
-                isDragOver ? "border-amber-500 bg-amber-50/20" : "border-gray-200 hover:bg-gray-50/80"
+                isDragOver ? "border-amber-500 bg-amber-50/20" : "border-gray-200 dark:border-slate-800 hover:bg-gray-50/80 dark:hover:bg-slate-850/30"
               }`}
             >
               <input
@@ -297,9 +301,9 @@ export default function CreateTeacherModal({
                     id="uploaded-preview-img"
                     src={uploadingImage}
                     alt="Preview avatar"
-                    className="h-20 w-20 rounded-xl object-cover border-2 border-gray-100 shadow-sm mb-2"
+                    className="h-20 w-20 rounded-xl object-cover border-2 border-gray-100 dark:border-slate-800 shadow-sm mb-2"
                   />
-                  <span className="text-xs font-bold text-teal-600 flex items-center gap-1">
+                  <span className="text-xs font-bold text-teal-600 dark:text-teal-400 flex items-center gap-1">
                     <Check className="h-3.5 w-3.5" /> Compass image attached!
                   </span>
                   <button
@@ -308,20 +312,20 @@ export default function CreateTeacherModal({
                       e.stopPropagation();
                       setUploadingImage(null);
                     }}
-                    className="mt-2 text-[10px] text-rose-600 font-bold hover:underline"
+                    className="mt-2 text-[10px] text-rose-600 dark:text-rose-400 font-bold hover:underline"
                   >
                     Remove and start again
                   </button>
                 </div>
               ) : (
                 <>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-500 mb-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 dark:bg-slate-800 text-amber-500 mb-3">
                     <Upload className="h-5 w-5" />
                   </div>
-                  <p className="text-xs font-bold text-gray-700">
-                    Drag and drop file here, or <span className="text-amber-600 hover:underline">browse</span>
+                  <p className="text-xs font-bold text-gray-700 dark:text-slate-300">
+                    Drag and drop file here, or <span className="text-amber-600 dark:text-amber-400 hover:underline">browse</span>
                   </p>
-                  <p className="text-[10px] text-gray-400 mt-1 font-medium">
+                  <p className="text-[10px] text-gray-400 dark:text-slate-500 mt-1 font-medium">
                     Upload screens from Compass profile or photo (PNG, JPG size &lt; 8MB)
                   </p>
                 </>
@@ -332,7 +336,7 @@ export default function CreateTeacherModal({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Teacher Name */}
             <div>
-              <label htmlFor="teacher-name-input" className="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1.5">
+              <label htmlFor="teacher-name-input" className="block text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-slate-400 mb-1.5">
                 Full Name <span className="text-rose-500">*</span>
               </label>
               <input
@@ -343,13 +347,13 @@ export default function CreateTeacherModal({
                 onChange={(e) => setName(e.target.value)}
                 required
                 disabled={submitting}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm placeholder-gray-400 shadow-xs focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 disabled:opacity-50"
+                className="w-full rounded-lg border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-850 dark:text-white px-3 py-2 text-sm placeholder-gray-400 dark:placeholder-slate-500 shadow-xs focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 disabled:opacity-50"
               />
             </div>
 
             {/* Subject Taught */}
             <div>
-              <label htmlFor="teacher-subject-input" className="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1.5">
+              <label htmlFor="teacher-subject-input" className="block text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-slate-400 mb-1.5">
                 Subject Taught <span className="text-rose-500">*</span>
               </label>
               <input
@@ -360,14 +364,14 @@ export default function CreateTeacherModal({
                 onChange={(e) => setSubject(e.target.value)}
                 required
                 disabled={submitting}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm placeholder-gray-400 shadow-xs focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 disabled:opacity-50"
+                className="w-full rounded-lg border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-850 dark:text-white px-3 py-2 text-sm placeholder-gray-400 dark:placeholder-slate-500 shadow-xs focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 disabled:opacity-50"
               />
             </div>
           </div>
 
           {/* Department Selector */}
           <div>
-            <label htmlFor="teacher-dept-select" className="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1.5">
+            <label htmlFor="teacher-dept-select" className="block text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-slate-400 mb-1.5">
               Subject Faculty Department <span className="text-rose-500">*</span>
             </label>
             <select
@@ -375,10 +379,10 @@ export default function CreateTeacherModal({
               value={department}
               onChange={(e) => setDepartment(e.target.value)}
               disabled={submitting}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm shadow-xs focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 disabled:opacity-50"
+              className="w-full rounded-lg border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-850 dark:text-white px-3 py-2 text-sm shadow-xs focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 disabled:opacity-50"
             >
-              {DEPARTMENTS.map((dept) => (
-                <option key={dept} value={dept}>
+              {activeDepartments.map((dept) => (
+                <option key={dept} value={dept} className="bg-white dark:bg-slate-900 text-slate-850 dark:text-white">
                   {dept}
                 </option>
               ))}
@@ -387,8 +391,8 @@ export default function CreateTeacherModal({
 
           {/* Short Bio */}
           <div>
-            <label htmlFor="teacher-bio-textarea" className="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1.5">
-              Profile Summary / Bio <span className="text-gray-400">(Optional)</span>
+            <label htmlFor="teacher-bio-textarea" className="block text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-slate-400 mb-1.5">
+              Profile Summary / Bio <span className="text-gray-400 dark:text-slate-500">(Optional)</span>
             </label>
             <textarea
               id="teacher-bio-textarea"
@@ -398,16 +402,16 @@ export default function CreateTeacherModal({
               disabled={submitting}
               rows={3}
               maxLength={250}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm placeholder-gray-400 shadow-xs focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 disabled:opacity-50"
+              className="w-full rounded-lg border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-850 dark:text-white px-3 py-2 text-sm placeholder-gray-400 dark:placeholder-slate-500 shadow-xs focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 disabled:opacity-50"
             />
-            <p className="text-right text-[10px] text-gray-400 mt-1 font-semibold">
+            <p className="text-right text-[10px] text-gray-400 dark:text-slate-500 mt-1 font-semibold">
               {bio.length}/250 characters
             </p>
           </div>
 
           {/* Profile Theme Accent Colors */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-2">
+            <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-slate-400 mb-2">
               Select Profile Theme color
             </label>
             <div className="flex gap-3">
@@ -418,7 +422,7 @@ export default function CreateTeacherModal({
                   onClick={() => setAccentColor(color)}
                   disabled={submitting}
                   className={`relative h-8 w-8 rounded-full border-2 transition ${
-                    accentColor === color ? "border-amber-600 scale-110 shadow-sm" : "border-transparent"
+                    accentColor === color ? "border-amber-600 dark:border-amber-450 scale-110 shadow-sm" : "border-transparent"
                   }`}
                   style={{
                     backgroundColor:
@@ -446,12 +450,12 @@ export default function CreateTeacherModal({
           </div>
 
           {/* Footer Actions */}
-          <div className="flex gap-3 border-t border-gray-100 pt-5">
+          <div className="flex gap-3 border-t border-gray-100 dark:border-slate-805 pt-5 dark:border-slate-805 border-slate-100">
             <button
               id="cancel-create-teacher-btn"
               type="button"
               onClick={onClose}
-              className="flex-grow rounded-xl border border-gray-200 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:text-gray-900 active:bg-gray-100"
+              className="flex-grow rounded-xl border border-gray-250 py-2.5 text-sm font-semibold text-gray-750 dark:text-slate-350 hover:bg-gray-50 hover:text-gray-900 active:bg-gray-150 border-gray-200 dark:border-slate-800 dark:hover:bg-slate-800 dark:hover:text-white dark:active:bg-slate-850"
             >
               Cancel
             </button>
