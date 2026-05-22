@@ -41,9 +41,6 @@ let memoryDB: DatabaseSchema | null = null;
 // Read database from file or write defaults
 function readDB(): DatabaseSchema {
   if (memoryDB) {
-    if (typeof memoryDB.studentEditingEnabled === "boolean") {
-      runtimeStudentEditingEnabled = memoryDB.studentEditingEnabled;
-    }
     return memoryDB;
   }
   try {

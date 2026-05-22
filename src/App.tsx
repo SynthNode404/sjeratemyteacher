@@ -1178,8 +1178,9 @@ export default function App() {
             <Check className="h-3 w-3 text-emerald-500 stroke-[3]" /> Compass profiles synced
           </span>
         </div>
-        <div className="text-indigo-600 text-center md:text-right font-black">
-          Rate My Teachers • Built for high fidelity transparency • 2026
+        <div className="text-indigo-600 text-center md:text-right font-black flex items-center justify-center md:justify-end gap-2.5">
+          <span>Rate My Teachers • Built for high fidelity transparency • 2026</span>
+          <span className="bg-indigo-50 text-indigo-700 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-indigo-100 uppercase tracking-normal">v1.2.1</span>
         </div>
       </footer>
 
