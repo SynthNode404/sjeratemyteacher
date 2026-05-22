@@ -487,6 +487,35 @@ app.post("/api/admin/teachers/:id/delete", checkAdminAuth, (req, res) => {
   res.json({ success: true });
 });
 
+// Admin endpoint: Update a teacher profile details
+app.post("/api/admin/teachers/:id/update", checkAdminAuth, (req, res) => {
+  const teacherId = req.params.id;
+  const { name, subject, department, avatar, bio, accentColor } = req.body;
+
+  if (!name || !subject || !department) {
+    return res.status(400).json({ error: "All required fields (Name, Subject, Department) must be supplied." });
+  }
+
+  const db = readDB();
+  const index = db.teachers.findIndex(t => t.id === teacherId);
+  if (index === -1) {
+    return res.status(404).json({ error: "Teacher profile not found." });
+  }
+
+  db.teachers[index] = {
+    ...db.teachers[index],
+    name,
+    subject,
+    department,
+    avatar: avatar !== undefined ? avatar : db.teachers[index].avatar,
+    bio: bio || "Highly dedicated educator.",
+    accentColor: accentColor || db.teachers[index].accentColor
+  };
+
+  writeDB(db);
+  res.json({ success: true, teacher: db.teachers[index] });
+});
+
 // --- VITE DEV AND PROD MIDDLEWARE SETUP ---
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {

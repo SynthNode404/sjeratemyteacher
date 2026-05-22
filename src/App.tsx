@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import {
   Search,
   Plus,
@@ -29,6 +30,8 @@ import {
 import { Teacher, Review } from "./types";
 import TeacherCard from "./components/TeacherCard";
 import CreateTeacherModal from "./components/CreateTeacherModal";
+import EditTeacherModal from "./components/EditTeacherModal";
+import AdminAnalytics from "./components/AdminAnalytics";
 
 // Dynamic constant declaration required by the guidelines:
 // "Add a simple setting in the code like: const STUDENT_EDITING_ENABLED = true;"
@@ -86,6 +89,7 @@ export default function App() {
   
   // UI Panels / Modals
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
   const [isWriteReviewOpen, setIsWriteReviewOpen] = useState(false);
 
@@ -99,6 +103,7 @@ export default function App() {
   const [ratingSupport, setRatingSupport] = useState(5);
   
   // Admin System Moderation State
+  const [adminTab, setAdminTab] = useState<"moderation" | "analytics">("moderation");
   const [newDepartmentInput, setNewDepartmentInput] = useState("");
   const [allSystemReviews, setAllSystemReviews] = useState<Review[]>([]);
   const [adminReportReason, setAdminReportReason] = useState<Record<string, string>>({});
@@ -686,8 +691,37 @@ export default function App() {
                   </button>
                 </div>
 
-                {/* Reported & All Reviews Analytics Table */}
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                {/* Sub-panel Toggles / Tabs */}
+                <div className="flex border-b border-indigo-900 mb-6 gap-6">
+                  <button
+                    id="admin-tab-moderation-btn"
+                    type="button"
+                    onClick={() => setAdminTab("moderation")}
+                    className={`pb-2.5 text-xs font-black uppercase tracking-wider border-b-2 transition cursor-pointer ${
+                      adminTab === "moderation"
+                        ? "border-yellow-400 text-white"
+                        : "border-transparent text-indigo-400 hover:text-indigo-200"
+                    }`}
+                  >
+                    Moderation & Directory
+                  </button>
+                  <button
+                    id="admin-tab-analytics-btn"
+                    type="button"
+                    onClick={() => setAdminTab("analytics")}
+                    className={`pb-2.5 text-xs font-black uppercase tracking-wider border-b-2 transition cursor-pointer ${
+                      adminTab === "analytics"
+                        ? "border-yellow-400 text-white"
+                        : "border-transparent text-indigo-400 hover:text-indigo-200"
+                    }`}
+                  >
+                    Performance Analytics
+                  </button>
+                </div>
+
+                {adminTab === "moderation" ? (
+                  /* Reported & All Reviews Analytics Table */
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
                   <div className="md:col-span-8 space-y-3">
                     <h3 className="text-xs uppercase font-extrabold tracking-widest text-indigo-300">
                       Total Reviews on Moderation Queue
@@ -833,19 +867,34 @@ export default function App() {
                         {teachers.map((t) => (
                           <div key={t.id} className="flex items-center justify-between gap-1 text-xs border-b border-indigo-800/40 pb-1.5 last:border-none">
                             <span className="truncate text-white font-medium">{t.name}</span>
-                            <button
-                              onClick={() => handleDeleteTeacher(t.id)}
-                              className="p-1 rounded bg-rose-950 text-rose-400 hover:bg-rose-900 transition"
-                              title="Purge completely"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </button>
+                            <div className="flex gap-1.5 shrink-0">
+                              <button
+                                onClick={() => {
+                                  setSelectedTeacher(t);
+                                  setIsEditModalOpen(true);
+                                }}
+                                className="p-1 rounded bg-amber-950 text-amber-450 hover:bg-amber-900 transition cursor-pointer"
+                                title="Edit profile"
+                              >
+                                <Sparkles className="h-3 w-3" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteTeacher(t.id)}
+                                className="p-1 rounded bg-rose-950 text-rose-400 hover:bg-rose-900 transition"
+                                title="Purge completely"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>
                     </div>
                   </div>
                 </div>
+                ) : (
+                  <AdminAnalytics teachers={teachers} allReviews={allSystemReviews} />
+                )}
               </>
             )}
           </div>
@@ -882,25 +931,41 @@ export default function App() {
 
           {/* Teacher Bento Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {filteredTeachers.length === 0 ? (
-              <div className="col-span-full bg-white dark:bg-slate-900 rounded-3xl p-12 text-center border-2 border-dashed border-gray-200 dark:border-slate-800">
-                <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 dark:bg-slate-800 text-amber-500 mb-3">
-                  <Search className="h-6 w-6" />
-                </div>
-                <h3 className="text-base font-bold text-gray-800 dark:text-white">No teachers found</h3>
-                <p className="text-xs text-gray-400 dark:text-slate-400 mt-1 max-w-sm mx-auto">
-                  Try refining your search keyword or selecting a different Faculty department from the filter dropdown above.
-                </p>
-              </div>
-            ) : (
-              filteredTeachers.map((t) => (
-                <TeacherCard
-                  key={t.id}
-                  teacher={t}
-                  onSelect={(sel) => fetchTeacherDetails(sel.id)}
-                />
-              ))
-            )}
+            <AnimatePresence mode="popLayout">
+              {filteredTeachers.length === 0 ? (
+                <motion.div
+                  key="empty-teachers-directory"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="col-span-full bg-white dark:bg-slate-900 rounded-3xl p-12 text-center border-2 border-dashed border-gray-200 dark:border-slate-800"
+                >
+                  <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 dark:bg-slate-800 text-amber-500 mb-3">
+                    <Search className="h-6 w-6" />
+                  </div>
+                  <h3 className="text-base font-bold text-gray-800 dark:text-white">No teachers found</h3>
+                  <p className="text-xs text-gray-400 dark:text-slate-400 mt-1 max-w-sm mx-auto">
+                    Try refining your search keyword or selecting a different Faculty department from the filter dropdown above.
+                  </p>
+                </motion.div>
+              ) : (
+                filteredTeachers.map((t) => (
+                  <motion.div
+                    key={t.id}
+                    layout
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -15 }}
+                    transition={{ duration: 0.25, ease: "easeInOut" }}
+                  >
+                    <TeacherCard
+                      teacher={t}
+                      onSelect={(sel) => fetchTeacherDetails(sel.id)}
+                    />
+                  </motion.div>
+                ))
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Upload New Profile Action Card (Compass Photo & honorific prefix) */}
@@ -1020,15 +1085,26 @@ export default function App() {
                   </div>
                 )}
 
-                {/* Direct Write Review Button */}
-                <button
-                  id="write-review-on-profile-card-btn"
-                  onClick={() => setIsWriteReviewOpen(true)}
-                  className="w-full mt-5 bg-indigo-600 text-white font-bold py-3.5 rounded-2xl shadow-lg dark:shadow-none shadow-indigo-200/50 hover:scale-[1.01] active:scale-[0.99] transition flex items-center justify-center gap-2 text-sm"
-                >
-                  <Plus className="h-4.5 w-4.5" />
-                  Leave rating & Review
-                </button>
+                {/* Direct Write Review Button & Admin Edit Profile Button */}
+                <div className="w-full flex gap-3 mt-5">
+                  <button
+                    id="write-review-on-profile-card-btn"
+                    onClick={() => setIsWriteReviewOpen(true)}
+                    className="flex-grow bg-indigo-600 text-white font-bold py-3.5 rounded-2xl shadow-lg dark:shadow-none shadow-indigo-200/50 hover:scale-[1.01] active:scale-[0.99] transition flex items-center justify-center gap-2 text-sm cursor-pointer"
+                  >
+                    <Plus className="h-4.5 w-4.5" />
+                    Leave rating & Review
+                  </button>
+                  <button
+                    id="edit-teacher-profile-btn"
+                    onClick={() => setIsEditModalOpen(true)}
+                    className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-705 px-4 rounded-2xl border border-slate-200/50 dark:border-slate-700/50 hover:scale-[1.01] active:scale-[0.99] transition text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-center gap-1.5 cursor-pointer"
+                    title="Edit Teacher Profile"
+                  >
+                    <Sparkles className="h-4 w-4 text-amber-500" />
+                    Edit Profile
+                  </button>
+                </div>
               </div>              {/* Collapsible Write Review Form Segment */}
               {isWriteReviewOpen && (
                 <div id="write-review-form-segment" className="bg-white dark:bg-slate-900 rounded-3xl p-5 shadow-lg dark:shadow-none border border-indigo-100 dark:border-slate-800 animate-slide-in">
@@ -1243,69 +1319,82 @@ export default function App() {
 
                 {/* List items */}
                 <div className="space-y-4 max-h-[32rem] overflow-y-auto pr-1">
-                  {sortedReviews.length === 0 ? (
-                    <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 text-center border border-slate-100 dark:border-slate-800 text-slate-450 dark:text-slate-400 text-xs">
-                      No ratings yet. Click leave rating above to capture the first school review!
-                    </div>
-                  ) : (
-                    sortedReviews.map((rev) => (
-                      <div
-                        key={rev.id}
-                        id={`review-item-${rev.id}`}
-                        className="bg-white dark:bg-slate-900 p-5 rounded-3xl shadow-xs border border-slate-100 dark:border-slate-800 transition hover:border-slate-200 dark:hover:border-slate-700"
+                  <AnimatePresence mode="popLayout">
+                    {sortedReviews.length === 0 ? (
+                      <motion.div
+                        key="empty-reviews-state"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="bg-white dark:bg-slate-900 rounded-3xl p-8 text-center border border-slate-100 dark:border-slate-800 text-slate-450 dark:text-slate-400 text-xs"
                       >
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <div className="flex text-amber-400">
-                              {Array.from({ length: 5 }).map((_, i) => (
-                                <Star
-                                  key={i}
-                                  className={`h-3.5 w-3.5 ${
-                                    i < Math.round(rev.rating) ? "fill-amber-400 stroke-amber-400" : "text-gray-200 dark:text-slate-750"
-                                  }`}
-                                />
-                              ))}
+                        No ratings yet. Click leave rating above to capture the first school review!
+                      </motion.div>
+                    ) : (
+                      sortedReviews.map((rev) => (
+                        <motion.div
+                          key={rev.id}
+                          layout
+                          initial={{ opacity: 0, y: 15 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -15 }}
+                          transition={{ duration: 0.25, ease: "easeInOut" }}
+                          id={`review-item-${rev.id}`}
+                          className="bg-white dark:bg-slate-900 p-5 rounded-3xl shadow-xs border border-slate-100 dark:border-slate-800 transition hover:border-slate-200 dark:hover:border-slate-705"
+                        >
+                          <div className="flex justify-between items-start mb-2">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <div className="flex text-amber-400">
+                                {Array.from({ length: 5 }).map((_, i) => (
+                                  <Star
+                                    key={i}
+                                    className={`h-3.5 w-3.5 ${
+                                      i < Math.round(rev.rating) ? "fill-amber-400 stroke-amber-400" : "text-gray-200 dark:text-slate-755"
+                                    }`}
+                                  />
+                                ))}
+                              </div>
+                              <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest bg-indigo-50 dark:bg-indigo-950 px-2 py-0.5 rounded">
+                                {rev.grade}
+                              </span>
                             </div>
-                            <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest bg-indigo-50 dark:bg-indigo-950 px-2 py-0.5 rounded">
-                              {rev.grade}
+                            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">
+                              {new Date(rev.date).toLocaleDateString(undefined, {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric"
+                              })}
                             </span>
                           </div>
-                          <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">
-                            {new Date(rev.date).toLocaleDateString(undefined, {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric"
-                            })}
-                          </span>
-                        </div>
 
-                        <p className="text-slate-600 dark:text-slate-300 text-xs leading-relaxed mb-4 whitespace-pre-wrap">
-                          {rev.comment}
-                        </p>
+                          <p className="text-slate-600 dark:text-slate-300 text-xs leading-relaxed mb-4 whitespace-pre-wrap">
+                            {rev.comment}
+                          </p>
 
-                        <div className="flex items-center justify-between border-t border-gray-50 dark:border-slate-805 pt-3 dark:border-slate-800">
-                          <div className="flex items-center gap-3">
-                            <button
-                              onClick={() => handleLikeReview(rev.id)}
-                              className="text-[10px] font-black uppercase text-slate-400 hover:text-indigo-600 dark:hover:text-amber-400 flex items-center gap-1 select-none cursor-pointer"
-                              title="Upvote review"
-                            >
-                              <ThumbsUp className="h-3 w-3" /> Helpful ({rev.likes})
-                            </button>
-                            <button
-                              onClick={() => handleReportReview(rev.id)}
-                              className="text-[10px] font-black uppercase text-slate-400 hover:text-red-500 cursor-pointer"
-                            >
-                              Report Spam
-                            </button>
+                          <div className="flex items-center justify-between border-t border-gray-50 dark:border-slate-805 pt-3 dark:border-slate-805 border-slate-100">
+                            <div className="flex items-center gap-3">
+                              <button
+                                onClick={() => handleLikeReview(rev.id)}
+                                className="text-[10px] font-black uppercase text-slate-400 hover:text-indigo-600 dark:hover:text-amber-400 flex items-center gap-1 select-none cursor-pointer"
+                                title="Upvote review"
+                              >
+                                <ThumbsUp className="h-3 w-3" /> Helpful ({rev.likes})
+                              </button>
+                              <button
+                                onClick={() => handleReportReview(rev.id)}
+                                className="text-[10px] font-black uppercase text-slate-400 hover:text-red-500 cursor-pointer"
+                              >
+                                Report Spam
+                              </button>
+                            </div>
+                            <div className="text-[10px] italic text-slate-400 dark:text-slate-500 font-bold">
+                              — {rev.isAnonymous ? "Anonymous" : rev.author}
+                            </div>
                           </div>
-                          <div className="text-[10px] italic text-slate-400 dark:text-slate-500 font-bold">
-                            — {rev.isAnonymous ? "Anonymous" : rev.author}
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
+                        </motion.div>
+                      ))
+                    )}
+                  </AnimatePresence>
                 </div>
               </div>
 
@@ -1362,6 +1451,29 @@ export default function App() {
             showToast(`Profile for ${newTeacher.name} successfully established!`, "success");
             loadTeachers();
             fetchTeacherDetails(newTeacher.id);
+          }}
+        />
+      )}
+
+      {/* Edit Teacher Modal integration */}
+      {isEditModalOpen && selectedTeacher && (
+        <EditTeacherModal
+          teacher={selectedTeacher}
+          studentEditingEnabled={studentEditingState}
+          adminPassword={adminPassword}
+          isAdminAuthenticated={isAdminAuthenticated}
+          departments={departments}
+          onAdminLoginSuccess={(password) => {
+            setAdminPassword(password);
+            setIsAdminAuthenticated(true);
+            showToast("Admin access authenticated successfully!", "success");
+          }}
+          onClose={() => setIsEditModalOpen(false)}
+          onUpdated={(updatedTeacher) => {
+            setIsEditModalOpen(false);
+            showToast(`Profile for ${updatedTeacher.name} successfully updated!`, "success");
+            loadTeachers();
+            fetchTeacherDetails(updatedTeacher.id);
           }}
         />
       )}
