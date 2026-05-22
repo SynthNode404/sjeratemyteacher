@@ -1,0 +1,6 @@
+{
+  "name": "Rate My Teachers",
+  "description": "A high-fidelity modern review and rating platform for school teachers. Students can upload teacher photos, leave granular star ratings, write reviews, report spam, and view moderated content.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
