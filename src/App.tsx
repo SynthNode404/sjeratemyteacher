@@ -662,7 +662,6 @@ export default function App() {
                   </button>
                 </form>
                 <p className="mt-4.5 text-[11px] text-indigo-300 font-semibold">
-                  Hint: Use default password <code className="bg-indigo-900 border border-indigo-800 text-yellow-300 px-1.5 py-0.5 rounded font-mono font-extrabold">admin123</code> to authenticate
                 </p>
               </div>
             ) : (
